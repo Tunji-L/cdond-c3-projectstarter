@@ -203,10 +203,9 @@ jobs:
       - run:
           name: Run migrations
           command: |
-            apk add --update curl
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip awscliv2.zip
-            ./aws/install
+            #curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            #unzip awscliv2.zip
+            #./aws/install
             cd backend
             npm install
             # Run and save the migration output
