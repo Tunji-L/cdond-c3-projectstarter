@@ -1,0 +1,29 @@
+---
+- name: "install pm2"
+  become: true
+  become_method: sudo
+  become_user: root
+  npm:
+    name: pm2
+    global: yes
+    production: yes
+    state: present
+
+
+- name: "Copy index test page"
+  template:
+    src: "./artifact.tar.gz"
+    dest: "~/artifact.tar.gz"
+
+- name: "unarchive into the server"
+  become: true
+  become_method: sudo
+  become_user: root 
+  unarchive:
+    src: ~/artifact.tar.gz
+    dest: ~/
+
+- name: "executing node"
+  shell: |
+    pm2 stop default
+    pm2 start npm -- start
