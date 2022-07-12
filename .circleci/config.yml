@@ -226,11 +226,7 @@ jobs:
     docker:
       - image: python:3.7-alpine3.11
     steps:
-      - checkout
-      - restore_cache:
-          keys: [frontend-build]
-      - attach_workspace:
-          at: ~/     
+      - checkout  
       - run:
           name: Install dependencies
           command: |
@@ -243,6 +239,10 @@ jobs:
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
             ./aws/install
+      - restore_cache:
+          keys: [frontend-build]
+      - attach_workspace:
+          at: ~/   
       - run:
           name: Get backend url
           command: |
@@ -277,6 +277,11 @@ jobs:
       - checkout
       - add_ssh_keys:
           fingerprints: [05:2e:11:e1:75:a5:8a:e2:5b:d0:77:de:91:12:80:e8]
+      - run:
+          name: Install npm
+          command: |
+            apk add nodejs 
+            apk add npm
       - restore_cache:
           keys: [backend-build]
       - attach_workspace:
@@ -285,8 +290,7 @@ jobs:
           name: Install dependencies
           command: |
             # your code here
-            apk add --update nodejs nodejs-npm
-            apk add --update npm
+            apk add nodejs npm
             apk add --update curl
             apk add --update ansible
             apk add --upgrade tar
