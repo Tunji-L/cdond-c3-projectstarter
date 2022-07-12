@@ -184,7 +184,6 @@ jobs:
             apk add --update ansible
             apk add --upgrade tar
             apk add gzip
-            sleep 200
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
             ./aws/install
@@ -212,6 +211,7 @@ jobs:
       - run:
           name: Send migration results to kvdb.io
           command: |
+            grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             then
               curl https://kvdb.io/6oReRp25zjvRiUuFZvd4wP/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
@@ -235,6 +235,8 @@ jobs:
             yum install -y tar gzip
             curl -sL https://rpm.nodesource.com/setup_13.x |  bash -
             yum install -y nodejs
+            yum install -y npm
+            yum install -y curl
       - run:
           name: Get backend url
           command: |
@@ -277,9 +279,13 @@ jobs:
           name: Install dependencies
           command: |
             # your code here
+            apk add --update curl
             apk add --update ansible
             apk add --upgrade tar
-            apk add gzip            
+            apk add gzip
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            ./aws/install            
       - run:
           name: Deploy backend
           command: |
