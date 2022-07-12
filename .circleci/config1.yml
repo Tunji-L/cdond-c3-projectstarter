@@ -13,7 +13,6 @@ commands:
           when: on_fail
           command: |
             aws cloudformation delete-stack --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}"
-            aws s3 rm s3://udapeople-<< parameters.id >> --recursive
             aws cloudformation delete-stack --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}"
             echo "Destroying environment: << parameters.workflow_id >> "
 
@@ -42,6 +41,9 @@ jobs:
       - image: circleci/node:13.8.0
     steps:
       - checkout
+      - save_cache:
+          paths: [frontend/node_modules]
+          key: frontend-build
       - restore_cache:
           keys: [frontend-build]
       - run:
@@ -50,15 +52,15 @@ jobs:
             cd frontend
             npm install
             npm run build
-      - save_cache:
-          paths: [frontend/node_modules]
-          key: frontend-build
 
   build-backend:
     docker:
       - image: circleci/node:13.8.0
     steps:
       - checkout
+      - save_cache:
+          paths: [backend/node_modules]
+          key: backend-build
       - restore_cache:
           keys: [backend-build]
       - run:
@@ -67,9 +69,6 @@ jobs:
             cd backend
             npm install
             npm run build
-      - save_cache:
-          paths: [backend/node_modules]
-          key: backend-build
 
   test-frontend:
     docker:
@@ -77,16 +76,13 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: [frontend-test]
+          keys: [frontend-build]
       - run:
           name: frontend test
           command: |
             cd frontend
             npm install
             npm run test
-      - save_cache:
-          paths: [frontend/node_modules]
-          key: frontend-test
                 
   test-backend:
     docker:
@@ -94,16 +90,13 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: [backend-test]
+          keys: [backend-build]
       - run:
           name: backend test
           command: |
             cd backend
             npm install
             npm run test
-      - save_cache:
-          paths: [backend/node_modules]
-          key: backend-test
 
   scan-frontend:
     docker:
@@ -111,7 +104,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: [frontend-audit]
+          keys: [frontend-build]
       - run:
           name: analyze frontend
           command: |
@@ -119,9 +112,6 @@ jobs:
             npm install
             npm audit fix --audit-level=critical --force
             npm audit --audit-level=critical
-      - save_cache:
-          paths: [frontend/node_modules]
-          key: frontend-audit
 
   scan-backend:
     docker:
@@ -129,7 +119,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: [backend-audit]
+          keys: [backend-build]
       - run:
           name: analyze backend
           command: |
@@ -138,9 +128,6 @@ jobs:
             npm audit fix
             npm audit fix --audit-level=critical --force
             npm audit --audit-level=critical
-      - save_cache:
-          paths: [backend/node_modules]
-          key: backend-audit
 
   deploy-infrastructure:
     docker:
@@ -148,12 +135,9 @@ jobs:
     steps:
       - checkout
       - run:
-          name: install dependecies
-          command: |
-            yum install -y tar gzip
-      - run:
           name: Ensure back-end infrastructure exists
           command: |
+            yum install -y tar gzip
             aws cloudformation deploy \
               --template-file .circleci/files/backend.yml \
               --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
@@ -170,6 +154,7 @@ jobs:
       - run:
           name: Add back-end ip to ansible inventory
           command: |
+            sleep 100 
             aws ec2 describe-instances \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
             --filters "Name=tag:project,Values=udapeople" \
@@ -179,6 +164,7 @@ jobs:
           root: ~/
           paths:
             - project/.circleci/ansible/inventory.txt
+      # Here's where you will add some code to rollback on failure 
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
@@ -205,7 +191,8 @@ jobs:
           name: Configure server
           command: |
             cd .circleci/ansible
-            ansible-playbook -i inventory.txt configure-server.yml 
+            ansible-playbook -i inventory.txt configure-server.yml
+      # Here's where you will add some code to rollback on failure  
       - destroy-environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
@@ -219,6 +206,9 @@ jobs:
           command: |
             cd backend
             npm install
+            npm audit fix
+            npm audit fix --audit-level=critical --force
+            npm audit --audit-level=critical
             npm run migrations --force > migrations_dump.txt           
       - run:
           name: Send migration results to kvdb.io
@@ -234,18 +224,23 @@ jobs:
 
   deploy-frontend:
     docker:
-      - image: amazon/aws-cli
+      - image: python:3.7-alpine3.11
     steps:
       - checkout  
       - run:
           name: Install dependencies
           command: |
-            yum update -y
-            yum install -y tar gzip
-            curl -sL https://rpm.nodesource.com/setup_13.x |  bash -
-            yum install -y nodejs
+            apk add --update nodejs nodejs-npm
+            apk add --update npm
+            apk add --update curl
+            apk add --update ansible
+            apk add --upgrade tar
+            apk add gzip
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            ./aws/install
       - restore_cache:
-          keys: [frontend-audit]
+          keys: [frontend-build]
       - attach_workspace:
           at: ~/   
       - run:
@@ -277,24 +272,32 @@ jobs:
 
   deploy-backend:
     docker:
-      - image: amazon/aws-cli
+      - image: python:3.7-alpine3.11
     steps:
       - checkout
       - add_ssh_keys:
           fingerprints: [05:2e:11:e1:75:a5:8a:e2:5b:d0:77:de:91:12:80:e8]
+      - run:
+          name: Install npm
+          command: |
+            apk add nodejs 
+            apk add npm
       - restore_cache:
-          keys: [backend-audit]
+          keys: [backend-build]
       - attach_workspace:
           at: ~/
       - run:
           name: Install dependencies
           command: |
-            yum update -y
-            yum install -y  tar gzip
-            curl -sL https://rpm.nodesource.com/setup_13.x | bash -
-            yum install -y nodejs
-            amazon-linux-extras install -y epel
-            yum install -y ansible          
+            # your code here
+            apk add nodejs npm
+            apk add --update curl
+            apk add --update ansible
+            apk add --upgrade tar
+            apk add gzip
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            ./aws/install            
       - run:
           name: Deploy backend
           command: |
@@ -386,10 +389,7 @@ jobs:
             --parameter-overrides WorkflowID="udapeople-${CIRCLE_WORKFLOW_ID:0:7}" \
             --tags project=udapeople
       # Here's where you will add some code to rollback on failure  
-      - destroy-environment:
-          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
-      - revert-migrations:
-          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+      - destroy-environment
 
   cleanup:
     docker:
