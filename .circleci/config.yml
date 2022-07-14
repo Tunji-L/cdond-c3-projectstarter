@@ -254,7 +254,8 @@ jobs:
             # your code here
             export BACKEND_IP=$(aws ec2 describe-instances \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
-            --filters "Name=tag:project,Values=udapeople")
+            --filters "Name=tag:project,Values=udapeople" \
+            --output text)
             echo ${BACKEND_IP} # just added
             export API_URL="http://${BACKEND_IP}:3030"
             echo "${API_URL}"
@@ -319,14 +320,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            apk add --update --no-cache curl aws-cli tar gzip nodejs npm
-            # apk add --update curl
-            # apk add --update ansible
-            # apk add --upgrade tar
-            # apk add gzip
-            # curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            # unzip awscliv2.zip
-            # ./aws/install             
+            apk add --update --no-cache curl aws-cli tar gzip nodejs npm       
       - run:
           name: Get backend url
           command: |
@@ -334,6 +328,7 @@ jobs:
             export BACKEND_IP=$(aws ec2 describe-instances \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
             --filters "Name=tag:project,Values=udapeople")
+            --output text
             echo ${BACKEND_IP} # just added
             export API_URL="http://${BACKEND_IP}:3030"
             echo "${API_URL}"            
