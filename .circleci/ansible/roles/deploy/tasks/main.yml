@@ -11,6 +11,9 @@
 
 
 - name: "Copy index test page"
+  become: true
+  become_method: sudo
+  become_user: root
   template:
     src: "./artifact.tar.gz"
     dest: "~/artifact.tar.gz"
@@ -24,6 +27,9 @@
     dest: ~/
 
 - name: "executing node"
+  become: true
+  become_method: sudo
+  become_user: root 
   shell: |
     pm2 stop default
     pm2 start npm -- start
