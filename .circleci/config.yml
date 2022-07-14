@@ -304,7 +304,7 @@ jobs:
             # Zip the directory
             tar -C backend -czvf artifact.tar.gz .
             echo "Contents  of the inventory.txt file is -------"
-            cat inventory.txt
+            cat ./.circleci/ansibleinventory.txt
             ls -la
             ansible-playbook -i ./.circleci/ansibleinventory.txt deploy-backend.yml
       # Here's where you will add some code to rollback on failure 
