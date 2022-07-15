@@ -9,21 +9,9 @@
     production: yes
     state: present
 
-
-- name: "Copy index test page"
-  become: true
-  become_method: sudo
-  become_user: root
-  template:
-    src: "./artifact.tar.gz"
-    dest: "~/artifact.tar.gz"
-
 - name: "unarchive into the server"
-  become: true
-  become_method: sudo
-  become_user: root 
   unarchive:
-    src: ~/artifact.tar.gz
+    src: ./artifact.tar.gz
     dest: ~/
 
 - name: "executing node"
