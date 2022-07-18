@@ -27,8 +27,6 @@
 
   - name: Install a list of packages
     become: true
-    become_method: sudo
-    become_user: root
     apt:
       pkg:
       - zip
