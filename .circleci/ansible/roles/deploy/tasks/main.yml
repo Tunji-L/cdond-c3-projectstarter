@@ -11,7 +11,7 @@
 
 - name: "unarchive into the server"
   unarchive:
-    src: ./artifact.tar.gz
+    src: files/artifact.tar.gz
     dest: ~/
 
 - name: "executing node"
