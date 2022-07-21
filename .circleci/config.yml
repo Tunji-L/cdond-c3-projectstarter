@@ -348,12 +348,12 @@ jobs:
             --filters "Name=tag:project,Values=udapeople" \
             --output text)
             echo ${BACKEND_IP}
-            export API_URL="http://${BACKEND_IP}:3030"
+            export API_URL="http://${BACKEND_IP}:3030/api/status"
             echo "${API_URL}"            
       - run:
           name: Backend smoke test.
           command: |
-            if curl -s "${API_URL}/api/status" | grep "ok"
+            if curl -s ${API_URL} | grep "ok"
             then
               echo "success"
             else
