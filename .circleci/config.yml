@@ -1,5 +1,10 @@
 version: 2.1
 
+parameters:
+  workflow_id:
+    type: string
+    default: ${CIRCLE_WORKFLOW_ID:0:7}
+
 commands:
   destroy-environment:
     description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
@@ -173,7 +178,7 @@ jobs:
           command: |
             aws ec2 describe-instances \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
-            --filters "Name=tag:project,Values=udapeople" \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
             --output text >> ~/project/.circleci/ansible/inventory.txt
             cat ~/project/.circleci/ansible/inventory.txt
       - persist_to_workspace:
@@ -267,7 +272,7 @@ jobs:
             # your code here
             export BACKEND_IP=$(aws ec2 describe-instances \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
-            --filters "Name=tag:project,Values=udapeople" \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
             --output text)
             echo ${BACKEND_IP}
             export API_URL="http://${BACKEND_IP}:3030"
@@ -313,10 +318,6 @@ jobs:
             mkdir -p ./.circleci/ansible/roles/deploy/files
             cp artifact.tar.gz ./.circleci/ansible/roles/deploy/files
             ls -la ./.circleci/ansible/roles/deploy/files
-            # cp artifact.tar.gz ./.circleci/ansible
-            # cp artifact.tar.gz ./.circleci/ansible/roles
-            # cp artifact.tar.gz ./.circleci/ansible/roles/deploy
-            # cp artifact.tar.gz ./.circleci/ansible/roles/deploy/tasks
             echo "Contents  of the inventory.txt file is -------"
             cat ./.circleci/ansible/inventory.txt
             ls -la
@@ -342,7 +343,7 @@ jobs:
             # export BACKEND_IP=$(tail ~/project/.circleci/ansible/inventory.txt)
             export BACKEND_IP=$(aws ec2 describe-instances \
             --query 'Reservations[*].Instances[*].PublicIpAddress' \
-            --filters "Name=tag:project,Values=udapeople" \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
             --output text)
             export API_URL="http://${BACKEND_IP}:3030"
             echo "${API_URL}"
@@ -380,12 +381,19 @@ jobs:
             unzip awscliv2.zip
             sudo ./aws/install
       - run:
-          name: Update cloudfront distribution
+          name: Get old stack workflow ID and Update cloudfront distribution
           command: |
+            export OldWorkflowID=$(aws cloudformation \
+            list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+            --no-paginate --output text)
+            echo OldWorkflowID: "${OldWorkflowID}"
+            echo CIRCLE_WORKFLOW_ID "${CIRCLE_WORKFLOW_ID:0:7}"
+            echo "${OldWorkflowID}" > ~/old.txt
+            cat ~/old.txt
             aws cloudformation deploy \
             --template-file .circleci/files/cloudfront.yml \
             --stack-name InitialStack \
-            --parameter-overrides WorkflowID="udapeople-${CIRCLE_WORKFLOW_ID:0:7}" \
+            --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
             --tags project=udapeople
       # Here's where you will add some code to rollback on failure  
       - destroy-environment
@@ -397,16 +405,12 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Get old stack workflow id
+          name: Get old stack workflow id and remove
           command: |
-            # your code here
-            export OldWorkflowID=$(aws cloudformation \
-            list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
-            --no-paginate --output text)
-            echo OldWorkflowID: "${OldWorkflowID}"
-            echo CIRCLE_WORKFLOW_ID "${CIRCLE_WORKFLOW_ID:0:7}"
+            export OldWorkflowID=$(cat ~/old.txt)
+            echo ${OldWorkflowID}
             export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
-            --stack-status-filter CREATE_COMPLETE --no-paginate --output text)
+            --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
             echo Stack names: "${STACKS[@]}"
       - run:
           name: Remove old stacks and files
