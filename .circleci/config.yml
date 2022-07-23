@@ -388,13 +388,16 @@ jobs:
             --no-paginate --output text)
             echo OldWorkflowID: "${OldWorkflowID}"
             echo CIRCLE_WORKFLOW_ID "${CIRCLE_WORKFLOW_ID:0:7}"
-            echo "${OldWorkflowID}" > ~/old.txt
-            cat ~/old.txt
+            echo "${OldWorkflowID}" > ~/project/backend/old.txt
+            cat ~/project/backend/old.txt
             aws cloudformation deploy \
             --template-file .circleci/files/cloudfront.yml \
             --stack-name InitialStack \
             --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
             --tags project=udapeople
+      - persist_to_workspace:
+          root: ~/
+          paths: [project/backend]
       # Here's where you will add some code to rollback on failure  
       - destroy-environment
       - revert-migrations
@@ -404,10 +407,12 @@ jobs:
       - image: amazon/aws-cli
     steps:
       - checkout
+      - attach_workspace:
+          at: ~/
       - run:
           name: Get old stack workflow id and remove
           command: |
-            export OldWorkflowID=$(cat ~/old.txt)
+            export OldWorkflowID=$(cat ~/project/backend/old.txt)
             echo ${OldWorkflowID}
             export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
             --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
