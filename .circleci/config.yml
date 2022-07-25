@@ -326,6 +326,10 @@ jobs:
             mkdir -p ./.circleci/ansible/roles/deploy/files
             cp artifact.tar.gz ./.circleci/ansible/roles/deploy/files
             ls -la ./.circleci/ansible/roles/deploy/files
+            aws ec2 describe-instances \
+            --query 'Reservations[*].Instances[*].PublicIpAddress' \
+            --filters "Name=tag:aws:cloudformation:stack-name,Values=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+            --output text >> ~/project/.circleci/ansible/inventory.txt
             echo "Contents  of the inventory.txt file is -------"
             cat ./.circleci/ansible/inventory.txt
             ls -la
