@@ -284,13 +284,6 @@ jobs:
           name: Deploy frontend objects
           command: |
             cat frontend/.env
-            export BACKEND_IP=$(aws ec2 describe-instances \
-            --query 'Reservations[*].Instances[*].PublicIpAddress' \
-            --filters "Name=tag:aws:cloudformation:stack-name,Values=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-            --output text)
-            export API_URL="http://${BACKEND_IP}:3030"
-            echo API_URL="http://${BACKEND_IP}:3030" > frontend/.env
-            cat frontend/.env
             cd frontend
             npm install
             npm run build
@@ -463,9 +456,9 @@ workflows:
           requires: [build-frontend]
       - deploy-infrastructure:
           requires: [test-frontend, test-backend, scan-frontend, scan-backend]
-          # filters:
-          #   branches:
-          #     only: [test-feature-branch]
+          filters:
+            branches:
+              only: [dev-branch]
       - configure-infrastructure:
           requires: [deploy-infrastructure]
       - run-migrations:
