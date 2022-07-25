@@ -217,9 +217,6 @@ jobs:
             cat backend/.env
             cd .circleci/ansible
             ansible-playbook -i inventory.txt configure-server.yml 
-      - persist_to_workspace:
-          root: ~/
-          paths: [project/backend]
       - destroy-environment
 
   run-migrations:
@@ -233,13 +230,14 @@ jobs:
             sudo apt install -y tar gzip curl
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
-            sudo ./aws/install            
+            sudo ./aws/install          
       - restore_cache:
           keys: [backend-build]
       - run:
           name: Run migrations
           command: |
             cd backend
+            npm install
             npm run migrations > migrations_dump.txt           
       - run:
           name: Send migration results to kvdb.io
@@ -255,13 +253,17 @@ jobs:
 
   deploy-frontend:
     docker:
-      - image: python:3.7-alpine3.16
+      - image: circleci/node:13.8.0
     steps:
       - checkout  
       - run:
           name: Install dependencies
           command: |
-            apk add --update --no-cache tar gzip nodejs npm aws-cli curl
+            sudo apt-get update && sudo apt-get install -yy less
+            sudo apt install -y tar gzip curl
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
       - restore_cache:
           keys: [frontend-build]
       - attach_workspace:
@@ -284,21 +286,18 @@ jobs:
           name: Deploy frontend objects
           command: |
             cat frontend/.env
-            export BACKEND_IP=$(aws ec2 describe-instances \
-            --query 'Reservations[*].Instances[*].PublicIpAddress' \
-            --filters "Name=tag:aws:cloudformation:stack-name,Values=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-            --output text)
-            export API_URL="http://${BACKEND_IP}:3030"
-            echo API_URL="http://${BACKEND_IP}:3030" > frontend/.env
-            cat frontend/.env
             cd frontend
             npm install
             npm run build
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+      - persist_to_workspace:
+          root: .
+          paths: [frontend/dist]
       # Here's where you will add some code to rollback on failure
       - destroy-environment
       - revert-migrations
+
 
   deploy-backend:
     docker:
@@ -312,7 +311,7 @@ jobs:
           command: |
             apk add --update --no-cache tar gzip nodejs npm aws-cli curl ansible
       - attach_workspace:
-          at: ~/
+          at: .
       - restore_cache:
           keys: [backend-build]
       - run:
@@ -463,9 +462,9 @@ workflows:
           requires: [build-frontend]
       - deploy-infrastructure:
           requires: [test-frontend, test-backend, scan-frontend, scan-backend]
-          # filters:
-          #   branches:
-          #     only: [test-feature-branch]
+          filters:
+            branches:
+              only: [dev-branch]
       - configure-infrastructure:
           requires: [deploy-infrastructure]
       - run-migrations:
