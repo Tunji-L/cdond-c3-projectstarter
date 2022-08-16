@@ -1,4 +1,3 @@
-[![CircleCI](https://dl.circleci.com/status-badge/img/gh/Tunji-L/cdond-c3-projectstarter/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/Tunji-L/DevOps_project4/tree/master)
 # Give your Application Auto-Deploy Superpowers
 
 In this project, you will prove your mastery of the following learning objectives:
